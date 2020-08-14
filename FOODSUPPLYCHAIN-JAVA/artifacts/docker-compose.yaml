@@ -1,0 +1,178 @@
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+version: '2'
+
+services:
+
+  ca.manufacturer.supplychain.com:
+    image: hyperledger/fabric-ca
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-manufacturer
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.manufacturer.supplychain.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/2346fb980744adfe6fe8f4161385ce413ce2a584df8598c26a0136ca20fd0c7d_sk
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.manufacturer.supplychain.com-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/2346fb980744adfe6fe8f4161385ce413ce2a584df8598c26a0136ca20fd0c7d_sk
+    ports:
+      - "7054:7054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ./channel/crypto-config/peerOrganizations/manufacturer.supplychain.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca_peerManufacturer
+
+  ca.middlemen.supplychain.com:
+    image: hyperledger/fabric-ca
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-middlemen
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.middlemen.supplychain.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/fa93f1bf66dc1124b13d5e6006537646c6b07735b1827c1d5d809ee3aa08e6ac_sk
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.middlemen.supplychain.com-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/fa93f1bf66dc1124b13d5e6006537646c6b07735b1827c1d5d809ee3aa08e6ac_sk
+    ports:
+      - "8054:7054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ./channel/crypto-config/peerOrganizations/middlemen.supplychain.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca_peerMiddlemen
+
+  ca.consumer.supplychain.com:
+    image: hyperledger/fabric-ca
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-consumer
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.consumer.supplychain.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/4620ba49e1f628aa7f83b3dc1b347b53643ea88b064b1da5f29bdc562f9cb70e_sk
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.consumer.supplychain.com-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/4620ba49e1f628aa7f83b3dc1b347b53643ea88b064b1da5f29bdc562f9cb70e_sk
+    ports:
+      - "9054:7054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ./channel/crypto-config/peerOrganizations/consumer.supplychain.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca_peerConsumer
+
+
+
+  orderer.supplychain.com:
+    container_name: orderer.supplychain.com
+    image: hyperledger/fabric-orderer
+    environment:
+      - FABRIC_LOGGING_SPEC=debug
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISFILE=/etc/hyperledger/configtx/genesis.block
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/etc/hyperledger/crypto/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/etc/hyperledger/crypto/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/etc/hyperledger/crypto/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/etc/hyperledger/crypto/orderer/tls/ca.crt, /etc/hyperledger/crypto/peerManufacturer/tls/ca.crt, /etc/hyperledger/crypto/peerMiddlemen/tls/ca.crt, /etc/hyperledger/crypto/peerConsumer/tls/ca.crt]
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderers
+    command: orderer
+    ports:
+      - 7050:7050
+    volumes:
+      - ./channel:/etc/hyperledger/configtx
+      - ./channel/crypto-config/ordererOrganizations/supplychain.com/orderers/orderer.supplychain.com/:/etc/hyperledger/crypto/orderer
+      - ./channel/crypto-config/peerOrganizations/manufacturer.supplychain.com/peers/peer0.manufacturer.supplychain.com/:/etc/hyperledger/crypto/peerManufacturer
+      - ./channel/crypto-config/peerOrganizations/middlemen.supplychain.com/peers/peer0.middlemen.supplychain.com/:/etc/hyperledger/crypto/peerMiddlemen
+      - ./channel/crypto-config/peerOrganizations/consumer.supplychain.com/peers/peer0.consumer.supplychain.com/:/etc/hyperledger/crypto/peerConsumer
+
+  peer0.manufacturer.supplychain.com:
+    container_name: peer0.manufacturer.supplychain.com
+    extends:
+      file:   base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer0.manufacturer.supplychain.com
+      - CORE_PEER_LOCALMSPID=ManufacturerMSP
+      - CORE_PEER_ADDRESS=peer0.manufacturer.supplychain.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.manufacturer.supplychain.com:7051
+    ports:
+      - 7051:7051
+      - 7053:7053
+    volumes:
+      - ./channel/crypto-config/peerOrganizations/manufacturer.supplychain.com/peers/peer0.manufacturer.supplychain.com/:/etc/hyperledger/crypto/peer
+    depends_on:
+      - orderer.supplychain.com
+
+  peer0.middlemen.supplychain.com:
+    container_name: peer0.middlemen.supplychain.com
+    extends:
+      file:   base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer0.middlemen.supplychain.com
+      - CORE_PEER_LOCALMSPID=MiddlemenMSP
+      - CORE_PEER_ADDRESS=peer0.middlemen.supplychain.com:8051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.middlemen.supplychain.com:8051
+    ports:
+      - 8051:7051
+      - 8053:7053
+    volumes:
+      - ./channel/crypto-config/peerOrganizations/middlemen.supplychain.com/peers/peer0.middlemen.supplychain.com/:/etc/hyperledger/crypto/peer
+    depends_on:
+      - orderer.supplychain.com
+
+  peer1.middlemen.supplychain.com:
+    container_name: peer1.middlemen.supplychain.com
+    extends:
+      file:   base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer1.middlemen.supplychain.com
+      - CORE_PEER_LOCALMSPID=MiddlemenMSP
+      - CORE_PEER_ADDRESS=peer1.middlemen.supplychain.com:9051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.middlemen.supplychain.com:9051
+    ports:
+      - 9051:7051
+      - 9053:7053
+    volumes:
+      - ./channel/crypto-config/peerOrganizations/middlemen.supplychain.com/peers/peer1.middlemen.supplychain.com/:/etc/hyperledger/crypto/peer
+    depends_on:
+      - orderer.supplychain.com
+
+  peer2.middlemen.supplychain.com:
+    container_name: peer2.middlemen.supplychain.com
+    extends:
+      file:   base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer2.middlemen.supplychain.com
+      - CORE_PEER_LOCALMSPID=MiddlemenMSP
+      - CORE_PEER_ADDRESS=peer2.middlemen.supplychain.com:10051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.middlemen.supplychain.com:10051
+    ports:
+      - 10051:7051
+      - 10053:7053
+    volumes:
+      - ./channel/crypto-config/peerOrganizations/middlemen.supplychain.com/peers/peer2.middlemen.supplychain.com/:/etc/hyperledger/crypto/peer
+    depends_on:
+      - orderer.supplychain.com
+
+  peer0.consumer.supplychain.com:
+    container_name: peer0.consumer.supplychain.com
+    extends:
+      file:   base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer0.consumer.supplychain.com
+      - CORE_PEER_LOCALMSPID=ConsumerMSP
+      - CORE_PEER_ADDRESS=peer0.consumer.supplychain.com:11051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.consumer.supplychain.com:11051
+    ports:
+      - 11051:7051
+      - 11053:7053
+    volumes:
+      - ./channel/crypto-config/peerOrganizations/consumer.supplychain.com/peers/peer0.consumer.supplychain.com/:/etc/hyperledger/crypto/peer
+    depends_on:
+      - orderer.supplychain.com
+
+
